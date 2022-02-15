@@ -1,0 +1,305 @@
+\documentclass[letter]{article}
+
+\usepackage{booktabs} % \toprule, \midrule, \bottomrule, table value alignment
+\usepackage[margin=1.0in]{geometry}
+\usepackage[bottom]{footmisc} % Keep footnotes at the bottom of the page
+\usepackage{circuitikz}
+\usepackage{float} % for forcing figure position with [H]
+\usepackage{framed} % for \leftbar{}
+\usepackage{pgfplots}
+\usepackage{physics}
+\usepackage{siunitx} % Provides the \SI{}{} and \si{} command for typesetting SI units
+\usepackage{soul} % \hl{} (highlight)
+\usepackage{titling}
+\usepackage{graphicx}
+
+\usepackage[hidelinks]{hyperref}
+
+\setlength\parindent{0pt} % Removes all indentation from paragraphs
+
+% siunitx custom unit for doing "volts peak to peak"
+\sisetup{detect-all}
+\DeclareSIQualifier\peakpeak{pp}
+\DeclareSIUnit\voltpp{\volt\peakpeak}
+
+\begin{document}
+
+\title{DSP SENIOR DESIGN \\ Anechoic Chamber, USRP, and MATLAB Setup}
+\author{Alice Truong and Morris Blaustein}
+
+% Custom title page
+\input{titlepage}
+\setcounter{page}{2} % count pages so they match the pdf page numbers
+
+%----------------------------------------------------------------------------------------
+%	SECTION 1 : PURPOSE
+%----------------------------------------------------------------------------------------
+\tableofcontents
+\newpage
+
+\section{Introduction}
+	\paragraph{}
+The purpose of this paper is give some background on how to set up the equipment to take antenna measurements for the digital signal processing team as of Fall 2021. Sections 2 and 3 provide some background and requirements for what's being used. Go to section 4 for the set-up steps. 
+
+
+%----------------------------------------------------------------------------------------
+%	SECTION 2 : EQUIPMENT USED
+%----------------------------------------------------------------------------------------
+\section{Equipment Used}
+	\subsection{USRPs}
+	   \paragraph{}
+	    The universal software radio peripheral is a software defined radio device. USRPs are made by Ettus Research and its parent company National Instruments. The transceiver inside a USRP is configurable with software programs such as GNU Radio. USRPs connect to host computers via ethernet cable and are controlled by a UHD driver. The open-source UHD API reduces software development time and integrates with many commonly used software such as GNU radio. The FPGA inside a USRP converts signals from the analog domain to the digital domain and is programmable. Host computers can perform DSP operations on the incoming digital signal. USRPs are used for applications which use signal frequencies between DC and 6 GHz. 
+	\subsection{N210}
+    	\paragraph{}
+	    The N210 is a software defined radio made by Ettus. It has Ethernet connectivity and an on-board FPGA for processing. It's operating range is between DC and 6GHz. The N210 has 50Mhz of RF bandwidth with 8 samples and 25Mhz of RF bandwidth with 16 samples. This project uses the RF2 output as a DAC to output a 4GHz sine wave into the power splitter. 
+	\subsection{N310}
+	\paragraph{}
+	    The N310 is a software defined radio made by Ettus. It has Ethernet connectivity and an on-board FPGA for processing. It's operating range is between 10Mhz and 6GHz. It has four RX and four TX channels. The four RX channels are used to received the analog signals from the four antennas and send the digital data to the host computer for processing. The N310 connects to the 2 outputs from the power splitter at LO In 0/1 RX and LO In 2/3 RX. These 2 signals are used as local oscillators.
+	\subsection{Antenna Array}
+	\paragraph{}
+	    The antenna array has 4 antennas spaced evenly and linearly. Each antenna has an output port which is used to connect it to one of the four RX channels on the N310.
+	\subsection{HP 8752C VNA}
+	\paragraph{}
+	    The HP 8752C Vector Network Analyzer is used to send a 1.94995Ghz signal from the main antenna in the anechoic chamber. The transmitted signal is received by the antennas under test on the position controller. 
+	\subsection{MI-4190 Position Controller}
+	\paragraph{}
+	 The MI-4190 Position Controller controls the rotation of the platform holding the antenna in the anechoic chamber. It can rotate between angles at even increments so that the signal from the antenna can be recorded at each angle. 
+    \subsection{Parts Used}
+    \paragraph{}
+
+%----------------------------------------------------------------------------------------
+%	SECTION 3 : Software (first section)
+%----------------------------------------------------------------------------------------
+\section{Software}
+    \paragraph{}
+    The following sections are basic introductions of the software that is used to record and view measurements in the lab. The way the software works is that you need to call and probe the USRPs and transmit a signal through the N210 to the N310. After seeing that the USRPs are connected, the MATLAB application can then be opened. The MATLAB code will move the position controller a set amount, call python to call GNU Radio to record measurements for each antenna and repeat such steps. 
+\subsection{UHD (USRP Hardware Driver)}
+	\paragraph{}
+	In order to use the USRPs to collect data, the UHD Hardware Driver needs to be installed to use some terminal commands. The UHD Hardware driver should be downloaded automatically on the senior design mac. You may be asked to update the driver for the USRPs, instructions for such are found here: https://files.ettus.com/manual/page_images.html. 
+
+\subsection{GNU Radio v3.7.14.0 and XQuartz v2.8.1}
+	\paragraph{}
+	GNU Radio is the software that is used to take measurements. For Mac, to activate gnu radio, click on gnu radio and Xquartz.
+\subsection{Python v2.7}
+	The code within MATLAB will run a python script that activates and tells gnu radio to run measurements.
+\subsection{MATLAB}
+    MATLAB acts as the main hub of commands. MATLAB will order python scripts to move the position controller and measure data using gnu radio, store data in files, and will process the collected data with code written by previous students.  
+\subsection{Required Files}
+	\paragraph{} The following files in Table \ref{tab.reqfile} must be in the Mac to use the measurement software. Position Controller is the main file that contains the measurement application, the functions used in the applications to boot the USRPs, and the python scripts the the application calls upon to take measurements with GNU Radio. The Signal Processing folder contains a Signal Processing Program that will take the data recorded from the Position Controller and do the following: read the data, calibrate the signals, create an ARV, find the AOA using the MUSIC algorithm, and beamform using LMS.
+	\begin{table}[H]
+	    \centering
+	    \begin{tabular}{|c|}
+	         \hline
+	        Required Files for Measurement  \\
+	         \hline
+	         Position Controller \\
+	         \hline
+	         Signal Processing \\
+	         \hline
+	    \end{tabular}
+	    \label{tab.reqfile}
+	\end{table}
+
+%----------------------------------------------------------------------------------------
+%	SECTION 4 : Anechoic Chamber Setup (second section)
+%----------------------------------------------------------------------------------------
+\section{Anechoic Chamber Setup}
+The following figure depicts the signal flow of the anechoic chamber setup. The host computer commands the N210 to output a 4Ghz sine wave which is sent into the power splitter. The output is two 2 Ghz sine waves which are used by the n310 as local oscillators. The VNA sends a 1.94995Ghz signal to the transmitted antenna, which is recieved by the receiving antenna and sent to the n310. The signal is digitized and sent to the host computer. The netgear router sends data back and forth from the USRPs and the host computer. The host computer commands the position controller to move in increments from -90 degrees to +90 degrees so measurements can be taken at each angle.
+
+\begin{figure}[H]
+    \centering
+	\includegraphics[width=5.5in]{block_diagram.PNG}
+	\caption{Block Diagram of Anechoic Chamber Setup}
+    \label{fig.ConnectPWRSplit}
+\end{figure}
+
+\subsection{Step 1: Connections for N210}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=5.5in]{n210}
+    \caption{The Connections for the N210}
+    \label{fig.ConnectN210}
+\end{figure}
+
+
+\subsection{Step 2: Connections for Power Splitter}
+\begin{figure}[H]
+    \centering
+	\includegraphics[width=5.5in]{power splitter.jpg}
+	\caption{The Connections for the Power Splitter}
+    \label{fig.ConnectPWRSplit}
+\end{figure}
+
+
+\subsection{Step 3: Connections for N310}
+\begin{figure}[H]
+    \centering
+	\includegraphics[width=5.5in]{n310a.jpg}
+	\caption{The Connections for the N310 (1)}
+    \label{fig.ConnectPWRSplit}
+\end{figure}
+\begin{figure}[H]
+    \centering
+	\includegraphics[width=5.5in]{n310b.jpg}
+	\caption{The Connections for the N310 (2)}
+    \label{fig.ConnectPWRSplit}
+\end{figure}
+
+\subsection{Step 4: Connections for Netgear Router}
+\begin{figure}[H]
+    \centering
+	\includegraphics[width=5.5in]{netgear.jpg}
+	\caption{The Connections for the Netgear Router}
+    \label{fig.ConnectPWRSplit}
+\end{figure}
+
+\subsection{Step 5: Setup for VNA}
+\begin{figure}[H]
+    \centering
+	\includegraphics[width=5.5in]{vna.jpg}
+	\caption{The Control Panel for the VNA}
+    \label{fig.ConnectPWRSplit}
+\end{figure}
+\textbf{Setting up the VNA}\\
+\emph{Power Button:} Turn on the VNA.\\
+\emph{Start:} Set start frequency to 1.94995 GHz.\\
+\emph{Stop:} Set stop frequency to 1.94995 GHz.\\
+
+
+\subsection{Setup for Position Controller}
+\begin{figure}[H]
+    \centering
+	\includegraphics[width=5.5in]{pos_cont.jpg}
+	\caption{The Control Panel for the Position Controller}
+    \label{fig.ConnectPWRSplit}
+\end{figure}
+\paragraph{Moving the Position Controller Manually}
+Use these steps to reset the position of the antenna after completing your measurement. \\
+\\
+1. Use the keypad to enter the angle you want to move the antenna to \\
+2. Select Enter \\
+3. Select Start Motion 
+
+\textbf{Once these steps are complete, connect the USB cable for the position controller and Ethernet cable to the senior design mac as shown in Fig.\ref{fig.macconnections}}
+
+\begin{figure}
+    \centering
+    \includegraphics[width = 5.5 in]{}
+    \caption{Connections for the Mac}
+    \label{fig.macconnections}
+\end{figure}
+
+%----------------------------------------------------------------------------------------
+%	SECTION 5 : USRP Setup
+%----------------------------------------------------------------------------------------
+\section{USRP Setup}
+\paragraph{}After finishing the connections and setups for the anechoic chamber, the next step is to connect the computer to the USRPs by giving them the following commands into the command terminal of the MAC. These commands will find the USRPs and probe them. \\
+
+1. uhd\_find\_devices \\
+\\
+2. uhd\_usrp\_probe \\
+    a. If there is an error, use: \\
+    sudo sysctl -w net.core.rmem\_max=6250000 \\
+    b. uhd\_find\_devices \\
+    c. uhd\_usrp\_probe \\
+
+ 
+
+
+\subsection{N210}
+	\paragraph{Sending a Signal from the N210} This command will make the the N210 to send a 3.9 GHz signal into the power divider to be received into the N310. This command is necessary to see the live feed of the taken data in GNU Radio.
+	\\
+	\\
+1. tx\_waveforms --args "addr=192.168.10.15,type=usrp2" --freq 3.90000e9 --ant "TX/RX" --subdev "A:0" --channels 0 --rate 1.25e6 --gain 26.5
+
+\subsection{GNU Radio}
+\paragraph{} These are the steps to see the live feed of the signals in gnu radio.\\
+
+\\ 
+1. Open Gnu Radio \\
+2. Open xquartz (For Mac Only) \\
+3. Within xquartz, open the file arraytest2.gnu \\
+
+This file is the gnu radio file that displays the live feed of the measurement. The page should look like fig. \ref{fig.arraytest2}. \\
+\begin{figure}[H]
+    \centering
+    \includegraphics[width= 3.5 in]{ArrayTest2.png}
+    \caption{The arraytest2 file in gnu radio}
+    \label{fig.arraytest2}
+\end{figure}
+\\
+4. Select the Play Button to see the gain and amplitudes across time and frequency. There should be a peak at the 1.94995 GHz frequency value and sine waves. 
+
+The live feed should look like fig. \ref{fig.gnulivestream}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 3.5 in ]{GnuLiveStreamPic.png}
+    \caption{The live stream feed of the measurement}
+    \label{fig.gnulivestream}
+\end{figure}
+
+
+%----------------------------------------------------------------------------------------
+%	SECTION X : Taking Measurements with MATLAB 
+%----------------------------------------------------------------------------------------
+\section{Taking Measurements with MATLAB}
+These are the steps used to take measurements with MATLAB. \\
+
+\\
+1. Open the following files from the position controller master folder:\\
+\\
+Documents/MATLAB/PositionControl-master/System/\textbf{PositionController} \\
+\\
+Documents/MATLAB/PositionControl-master/USRP/\textbf{bootUSRPs}\\
+
+2. Put a block on line 15 on bootUSRPs. This step is very important, there will be an error if this step is not done.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 5.5 in]{matlabBreak.png}
+    \caption{Put a break here!}
+    \label{fig.matlabbreak}
+\end{figure}
+
+3. Run the script for Position Controller \\ 
+
+\begin{figure} [H]
+    \centering
+    \includegraphics[width = 5.5 in ]{PositionControllerPic.png}
+    \caption{The Measurement Application}
+    \label{fig.measurementapp}
+\end{figure}
+
+4. Set the increment size to desired amount and the frequency to 1.94995 Ghz \\ 
+5. Select Start \\ 
+6. The function will eventually be paused because of the break put in bootUSRPs \\
+7. Copy line 15 starting from the "system('/Users/...)". DO NOT HAVE THE "[ \~, usrpBoot]=" PART COPIED! \\
+8. Paste the copied line into the command line and run it \\
+9. Enter the password: CSUN \\
+10. Continue the script \\
+\section{Processing Measurements with MATLAB}
+1. Put Measured Data Into USRP\_DATA \\
+2. Run Signal Processing Program \\
+3. Create ARV \\
+4. Follow Instructions \\
+5. Test and Process Data
+
+\section{Known Errors}
+
+\begin{thebibliography}{1}
+
+\bibitem[N210 Datasheet]{}
+\label{DSN210}
+https://www.ettus.com/all-products/un210-kit/
+
+[Accessed: 9-September-2021]
+
+
+
+
+\end{thebibliography}
+
+\end{document}
+
+
